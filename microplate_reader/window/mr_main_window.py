@@ -88,6 +88,9 @@ class MR_main_window_central_widget(QWidget):
         )
 
         self.__table_widget.cellClicked.connect(self.__slot_cell_clicked)
+        self.__table_widget.itemSelectionChanged.connect(
+            self.__slot_item_selection_changed
+        )
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self.__table_widget)
@@ -98,3 +101,12 @@ class MR_main_window_central_widget(QWidget):
             + self.__table_widget.verticalHeaderItem(row).text()
         )
         logger.info(f"Cell {cell_text} clicked")
+
+    def __slot_item_selection_changed(self):
+        selected_items = self.__table_widget.selectedIndexes()
+        selected_items_strings = [
+            self.__table_widget.horizontalHeaderItem(i.column()).text()
+            + self.__table_widget.verticalHeaderItem(i.row()).text()
+            for i in selected_items
+        ]
+        logger.info(f"Selected items: {selected_items_strings}")
