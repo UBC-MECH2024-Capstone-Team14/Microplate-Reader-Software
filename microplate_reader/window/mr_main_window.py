@@ -1,5 +1,6 @@
+import tomllib
 from loguru import logger
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QIODeviceBase, Qt, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import (
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QTableWidget,
+    QTableWidgetItem,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -70,15 +72,22 @@ class MRMainWindow(QMainWindow):
         logger.info(f"Comport {port.portName()} connected")
 
         self.__serial_port = port
+        self.__serial_port.open(QIODeviceBase.OpenModeFlag.ReadWrite)
         self.__serial_port.readyRead.connect(self.__slot_comport_ready_read)
 
     def __slot_comport_ready_read(self):
         while self.__serial_port.canReadLine():
-            logger.info(self.__serial_port.readLine().toStdString())
+            reply = self.__serial_port.readLine().data().decode("ascii").strip()
+            logger.debug(reply)
+            if reply.startswith("@scan_well"):
+                row_index, col_index, intensity = [
+                    int(word) for word in reply.split(" ")[1:4]
+                ]
+                self.__central_widget.update_cell(row_index, col_index, str(intensity))
 
     def __slot_comport_send(self, data: str):
         data = "/" + data + "\n"
-        logger.info(f"Comport send:\n{data}")
+        logger.debug(f"Comport send:\n{data}")
         if not self.__serial_port:
             logger.error("Comport not connected")
             return
@@ -90,6 +99,13 @@ class MR_main_window_central_widget(QWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # load config data
+        with open("./microplate-reader-config.toml", "rb") as f:
+            config = tomllib.load(f)
+            self.__row_positions: list[int] = config["row_positions"]
+            self.__led_intensities: list[int] = config["led_intensities"]
+            self.__open_position: int = config["open_position"]
 
         self.__home_button = QPushButton("Home")
         self.__home_button.clicked.connect(self.__slot_home_button_clicked)
@@ -133,21 +149,31 @@ class MR_main_window_central_widget(QWidget):
         self.layout().addLayout(self.__top_layout)  # type: ignore
         self.layout().addWidget(self.__table_widget)
 
+    # update the display value in the table widget cell
+    def update_cell(self, row: int, column: int, value: str):
+        self.__table_widget.setItem(row, column, QTableWidgetItem(value))
+
+    # write row positions and intensities through serial port
+    def __write_settings(self):
+        row_pos_string = " ".join([str(int(n)) for n in self.__row_positions])
+        self.signal_serial_send.emit(f"set_row_pos {row_pos_string}")
+
+        intensity_string = " ".join([str(int(n)) for n in self.__led_intensities])
+        self.signal_serial_send.emit(f"set_led_pwr {intensity_string}")
+
     def __slot_home_button_clicked(self):
-        logger.info("Home button clicked")
         self.signal_serial_send.emit("home")
 
     def __slot_read_button_clicked(self):
-        logger.info("Read button clicked")
+        self.__write_settings()
         for item in self.__table_widget.selectedIndexes():
             self.signal_serial_send.emit(f"scan_well {item.row()} {item.column()}")
 
     def __slot_read_all_button_clicked(self):
-        logger.info("Read all button clicked")
+        self.__write_settings()
         self.signal_serial_send.emit("scan_all")
 
     def __slot_move_abs_button_clicked(self):
-        logger.info("Move absolute button clicked")
         self.signal_serial_send.emit(f"move_abs {self.__move_abs_spinbox.value()}")
 
     def __slot_cell_clicked(self, row: int, col: int):

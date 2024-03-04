@@ -47,7 +47,7 @@ class MRComportMenu(QMenu):
     def __slot_connect_serial_port(self, action: QAction):
         self.__serial_port_info = action.data()
         serial_port = QSerialPort(self.__serial_port_info.portName())
-        serial_port.setBaudRate(115200)
+        serial_port.setBaudRate(9600)
         serial_port.setDataBits(QSerialPort.DataBits.Data8)
         serial_port.setParity(QSerialPort.Parity.NoParity)
         serial_port.setStopBits(QSerialPort.StopBits.OneStop)
