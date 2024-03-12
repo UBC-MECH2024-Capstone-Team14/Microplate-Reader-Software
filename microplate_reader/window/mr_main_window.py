@@ -1,15 +1,20 @@
+from itertools import product
+
 import tomllib
 from loguru import logger
+from pyqtgraph import DataTreeWidget
 from PySide6.QtCore import QIODeviceBase, Qt, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import (
     QDockWidget,
     QHBoxLayout,
+    QHeaderView,
     QMainWindow,
     QMenuBar,
     QPushButton,
     QSpinBox,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTextBrowser,
@@ -107,12 +112,22 @@ class MR_main_window_central_widget(QWidget):
             self.__led_intensities: list[int] = config["led_intensities"]
             self.__open_position: int = config["open_position"]
 
+        # Internal Data
+        self.__data_dict = {
+            (s1, s2): [1, 2, 3] for (s1, s2) in product("ABCDEFGH", range(1, 13))
+        }
+
+        # Control Buttons
         self.__home_button = QPushButton("Home")
         self.__home_button.clicked.connect(self.__slot_home_button_clicked)
+        self.__extract_button = QPushButton("Extract Tray")
+        self.__extract_button.clicked.connect(self.__slot_extract_button_clicked)
         self.__read_button = QPushButton("Read")
         self.__read_button.clicked.connect(self.__slot_read_button_clicked)
         self.__read_all_button = QPushButton("Read All")
         self.__read_all_button.clicked.connect(self.__slot_read_all_button_clicked)
+        self.__clear_data_button = QPushButton("Clear Data")
+        self.__clear_data_button.clicked.connect(self.__slot_clear_data_button_clicked)
 
         # Debug Utilities
         self.__move_abs_spinbox = QSpinBox()
@@ -124,20 +139,29 @@ class MR_main_window_central_widget(QWidget):
 
         self.__top_layout = QHBoxLayout()
         self.__top_layout.addWidget(self.__home_button)
+        self.__top_layout.addWidget(self.__extract_button)
         self.__top_layout.addWidget(self.__read_button)
         self.__top_layout.addWidget(self.__read_all_button)
+        self.__top_layout.addWidget(self.__clear_data_button)
 
         self.__top_layout.addWidget(self.__move_abs_spinbox)
         self.__top_layout.addWidget(self.__move_abs_button)
         self.__move_abs_button.clicked.connect(self.__slot_move_abs_button_clicked)
 
-        self.__table_widget = QTableWidget(12, 8)
+        self.__table_widget = QTableWidget(8, 12)
 
-        self.__table_widget.setHorizontalHeaderLabels(
-            [str(chr(ord("A") + i)) for i in range(self.__table_widget.columnCount())]
-        )
         self.__table_widget.setVerticalHeaderLabels(
-            [f"{i+1}" for i in range(self.__table_widget.rowCount())]
+            [str(chr(ord("A") + i)) for i in range(self.__table_widget.rowCount())]
+        )
+        self.__table_widget.setHorizontalHeaderLabels(
+            [f"{i+1}" for i in range(self.__table_widget.columnCount())]
+        )
+
+        self.__table_widget.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.__table_widget.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
         )
 
         self.__table_widget.cellClicked.connect(self.__slot_cell_clicked)
@@ -145,13 +169,25 @@ class MR_main_window_central_widget(QWidget):
             self.__slot_item_selection_changed
         )
 
+        self.__data_tree_widget = DataTreeWidget()
+        self.__data_tree_widget.setData(self.__data_dict)
+
+        self.__main__splitter = QSplitter()
+        self.__main__splitter.setOrientation(Qt.Orientation.Horizontal)
+        self.__main__splitter.addWidget(self.__table_widget)
+        self.__main__splitter.addWidget(self.__data_tree_widget)
+
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.__top_layout)  # type: ignore
-        self.layout().addWidget(self.__table_widget)
+        self.layout().addWidget(self.__main__splitter)
 
     # update the display value in the table widget cell
     def update_cell(self, row: int, column: int, value: str):
         self.__table_widget.setItem(row, column, QTableWidgetItem(value))
+
+        # update the internal data dict
+        self.__data_dict[(chr(ord("A") + row), column + 1)].append(int(value))
+        self.__data_tree_widget.setData(self.__data_dict, hideRoot=True)
 
     # write row positions and intensities through serial port
     def __write_settings(self):
@@ -167,7 +203,7 @@ class MR_main_window_central_widget(QWidget):
     def __slot_read_button_clicked(self):
         self.__write_settings()
         for item in self.__table_widget.selectedIndexes():
-            self.signal_serial_send.emit(f"scan_well {item.row()} {item.column()}")
+            self.signal_serial_send.emit(f"scan_well {item.column()} {item.row()}")
 
     def __slot_read_all_button_clicked(self):
         self.__write_settings()
@@ -176,10 +212,19 @@ class MR_main_window_central_widget(QWidget):
     def __slot_move_abs_button_clicked(self):
         self.signal_serial_send.emit(f"move_abs {self.__move_abs_spinbox.value()}")
 
+    def __slot_extract_button_clicked(self):
+        self.signal_serial_send.emit(f"move_abs {self.__open_position}")
+
+    def __slot_clear_data_button_clicked(self):
+        self.__data_dict = {
+            (s1, s2): [] for (s1, s2) in product("ABCDEFGH", range(1, 13))
+        }
+        self.__data_tree_widget.setData(self.__data_dict, hideRoot=True)
+
     def __slot_cell_clicked(self, row: int, col: int):
         cell_text = (
-            self.__table_widget.horizontalHeaderItem(col).text()
-            + self.__table_widget.verticalHeaderItem(row).text()
+            self.__table_widget.verticalHeaderItem(row).text()
+            + self.__table_widget.horizontalHeaderItem(col).text()
         )
         logger.info(f"Cell {cell_text} clicked")
 
