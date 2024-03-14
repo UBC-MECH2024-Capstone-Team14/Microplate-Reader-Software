@@ -2,6 +2,7 @@ import sys
 from contextlib import redirect_stderr, redirect_stdout
 
 from loguru import logger
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from microplate_reader.window.mr_main_window import MRMainWindow
@@ -19,6 +20,8 @@ if __name__ == "__main__":
     with redirect_stdout(main_window), redirect_stderr(main_window):  # type: ignore
         logger.remove()
         logger.add(sys.stdout)
+        main_window.setWindowIcon(QIcon("./icon.png"))
+        main_window.setWindowFilePath(__file__)
         main_window.show()
         logger.info(f"Starting {main_window.windowTitle()}...")
         sys.exit(app.exec())

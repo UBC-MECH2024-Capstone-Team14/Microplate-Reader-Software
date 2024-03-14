@@ -1,5 +1,6 @@
 from itertools import product
 
+import numpy as np
 import tomllib
 from loguru import logger
 from pyqtgraph import DataTreeWidget
@@ -118,8 +119,8 @@ class MR_main_window_central_widget(QWidget):
         # Control Buttons
         self.__home_button = QPushButton("Home")
         self.__home_button.clicked.connect(self.__slot_home_button_clicked)
-        self.__extract_button = QPushButton("Extract Tray")
-        self.__extract_button.clicked.connect(self.__slot_extract_button_clicked)
+        self.__eject_button = QPushButton("Eject Tray")
+        self.__eject_button.clicked.connect(self.__slot_extract_button_clicked)
         self.__read_button = QPushButton("Read")
         self.__read_button.clicked.connect(self.__slot_read_button_clicked)
         self.__read_all_button = QPushButton("Read All")
@@ -127,24 +128,29 @@ class MR_main_window_central_widget(QWidget):
         self.__clear_data_button = QPushButton("Clear Data")
         self.__clear_data_button.clicked.connect(self.__slot_clear_data_button_clicked)
 
+        self.__export_data_button = QPushButton("Export Data")
+        self.__export_data_button.clicked.connect(
+            self.__slot_export_data_button_clicked
+        )
+
         # Debug Utilities
         self.__move_abs_spinbox = QSpinBox()
         self.__move_abs_spinbox.setMinimum(-(2**31))
         self.__move_abs_spinbox.setMaximum(2**31 - 1)
         self.__move_abs_spinbox.setValue(0)
-
         self.__move_abs_button = QPushButton("Move Absolute")
+        self.__move_abs_button.clicked.connect(self.__slot_move_abs_button_clicked)
 
+        # Top Layout
         self.__top_layout = QHBoxLayout()
         self.__top_layout.addWidget(self.__home_button)
-        self.__top_layout.addWidget(self.__extract_button)
+        self.__top_layout.addWidget(self.__eject_button)
         self.__top_layout.addWidget(self.__read_button)
         self.__top_layout.addWidget(self.__read_all_button)
         self.__top_layout.addWidget(self.__clear_data_button)
-
         self.__top_layout.addWidget(self.__move_abs_spinbox)
         self.__top_layout.addWidget(self.__move_abs_button)
-        self.__move_abs_button.clicked.connect(self.__slot_move_abs_button_clicked)
+        self.__top_layout.addWidget(self.__export_data_button)
 
         # Table Widget
         self.__table_widget = MRMicroplateTableWidget(8, 12)
@@ -202,3 +208,11 @@ class MR_main_window_central_widget(QWidget):
             (s1, s2): [] for (s1, s2) in product("ABCDEFGH", range(1, 13))
         }
         self.__data_tree_widget.setData(self.__data_dict, hideRoot=True)
+
+    def __slot_export_data_button_clicked(self):
+        data = np.zeros(
+            (self.__table_widget.rowCount(), self.__table_widget.columnCount())
+        )
+        for k, v in self.__data_dict.items():
+            data[int(ord(k[0]) - ord("A")), k[1] - 1] = np.mean(v) if v else np.nan
+        np.savetxt("./microplate-reader-data.csv", data, delimiter=",")
