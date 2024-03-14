@@ -9,20 +9,18 @@ from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import (
     QDockWidget,
     QHBoxLayout,
-    QHeaderView,
     QMainWindow,
     QMenuBar,
     QPushButton,
     QSpinBox,
     QSplitter,
-    QTableWidget,
-    QTableWidgetItem,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
 
 from ..widget.mr_comport_menu import MRComportMenu
+from ..widget.mr_microplate_table_widget import MRMicroplateTableWidget
 
 
 class MRMainWindow(QMainWindow):
@@ -114,7 +112,7 @@ class MR_main_window_central_widget(QWidget):
 
         # Internal Data
         self.__data_dict = {
-            (s1, s2): [1, 2, 3] for (s1, s2) in product("ABCDEFGH", range(1, 13))
+            (s1, s2): [] for (s1, s2) in product("ABCDEFGH", range(1, 13))
         }
 
         # Control Buttons
@@ -148,30 +146,14 @@ class MR_main_window_central_widget(QWidget):
         self.__top_layout.addWidget(self.__move_abs_button)
         self.__move_abs_button.clicked.connect(self.__slot_move_abs_button_clicked)
 
-        self.__table_widget = QTableWidget(8, 12)
+        # Table Widget
+        self.__table_widget = MRMicroplateTableWidget(8, 12)
 
-        self.__table_widget.setVerticalHeaderLabels(
-            [str(chr(ord("A") + i)) for i in range(self.__table_widget.rowCount())]
-        )
-        self.__table_widget.setHorizontalHeaderLabels(
-            [f"{i+1}" for i in range(self.__table_widget.columnCount())]
-        )
-
-        self.__table_widget.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.__table_widget.verticalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-
-        self.__table_widget.cellClicked.connect(self.__slot_cell_clicked)
-        self.__table_widget.itemSelectionChanged.connect(
-            self.__slot_item_selection_changed
-        )
-
+        # Data Tree Widget
         self.__data_tree_widget = DataTreeWidget()
         self.__data_tree_widget.setData(self.__data_dict)
 
+        # Layouts
         self.__main__splitter = QSplitter()
         self.__main__splitter.setOrientation(Qt.Orientation.Horizontal)
         self.__main__splitter.addWidget(self.__table_widget)
@@ -183,7 +165,7 @@ class MR_main_window_central_widget(QWidget):
 
     # update the display value in the table widget cell
     def update_cell(self, row: int, column: int, value: str):
-        self.__table_widget.setItem(row, column, QTableWidgetItem(value))
+        self.__table_widget.item(row, column).setText(value)
 
         # update the internal data dict
         self.__data_dict[(chr(ord("A") + row), column + 1)].append(int(value))
@@ -220,19 +202,3 @@ class MR_main_window_central_widget(QWidget):
             (s1, s2): [] for (s1, s2) in product("ABCDEFGH", range(1, 13))
         }
         self.__data_tree_widget.setData(self.__data_dict, hideRoot=True)
-
-    def __slot_cell_clicked(self, row: int, col: int):
-        cell_text = (
-            self.__table_widget.verticalHeaderItem(row).text()
-            + self.__table_widget.horizontalHeaderItem(col).text()
-        )
-        logger.info(f"Cell {cell_text} clicked")
-
-    def __slot_item_selection_changed(self):
-        selected_items = self.__table_widget.selectedIndexes()
-        selected_items_strings = [
-            self.__table_widget.horizontalHeaderItem(i.column()).text()
-            + self.__table_widget.verticalHeaderItem(i.row()).text()
-            for i in selected_items
-        ]
-        logger.info(f"Selected items: {selected_items_strings}")
