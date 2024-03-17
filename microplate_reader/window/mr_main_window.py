@@ -4,11 +4,12 @@ import numpy as np
 import tomllib
 from loguru import logger
 from pyqtgraph import DataTreeWidget
-from PySide6.QtCore import QIODeviceBase, Qt, Signal
+from PySide6.QtCore import QIODeviceBase, Qt, QTimer, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtSerialPort import QSerialPort
 from PySide6.QtWidgets import (
     QDockWidget,
+    QFileDialog,
     QHBoxLayout,
     QMainWindow,
     QMenuBar,
@@ -120,7 +121,7 @@ class MR_main_window_central_widget(QWidget):
         self.__home_button = QPushButton("Home")
         self.__home_button.clicked.connect(self.__slot_home_button_clicked)
         self.__eject_button = QPushButton("Eject Tray")
-        self.__eject_button.clicked.connect(self.__slot_extract_button_clicked)
+        self.__eject_button.clicked.connect(self.__slot_eject_button_clicked)
         self.__read_button = QPushButton("Read")
         self.__read_button.clicked.connect(self.__slot_read_button_clicked)
         self.__read_all_button = QPushButton("Read All")
@@ -187,6 +188,19 @@ class MR_main_window_central_widget(QWidget):
 
     def __slot_home_button_clicked(self):
         self.signal_serial_send.emit("home")
+        self.__home_button.setDisabled(True)
+        self.__home_timer = QTimer()
+        self.__home_timer.setSingleShot(True)
+        self.__home_timer.setInterval(15000)
+        self.__home_timer.timeout.connect(self.__slot_homed_timeout)
+        self.__home_timer.start()
+
+    def homed(self):
+        self.__home_button.setEnabled(True)
+
+    def __slot_homed_timeout(self):
+        logger.error("Device home timeout")
+        self.__home_button.setEnabled(True)
 
     def __slot_read_button_clicked(self):
         self.__write_settings()
@@ -200,7 +214,7 @@ class MR_main_window_central_widget(QWidget):
     def __slot_move_abs_button_clicked(self):
         self.signal_serial_send.emit(f"move_abs {self.__move_abs_spinbox.value()}")
 
-    def __slot_extract_button_clicked(self):
+    def __slot_eject_button_clicked(self):
         self.signal_serial_send.emit(f"move_abs {self.__open_position}")
 
     def __slot_clear_data_button_clicked(self):
@@ -215,4 +229,8 @@ class MR_main_window_central_widget(QWidget):
         )
         for k, v in self.__data_dict.items():
             data[int(ord(k[0]) - ord("A")), k[1] - 1] = np.mean(v) if v else np.nan
-        np.savetxt("./microplate-reader-data.csv", data, delimiter=",")
+
+        path, _ = QFileDialog.getSaveFileName(
+            self, caption="Save Data", dir="data.csv", filter="CSV Files (*.csv)"
+        )
+        np.savetxt(path, data, delimiter=",")
