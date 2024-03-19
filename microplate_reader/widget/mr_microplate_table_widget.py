@@ -42,6 +42,10 @@ class CircleDelegate(QStyledItemDelegate):
             painter.setBrush(QBrush(Qt.GlobalColor.white))
         painter.drawEllipse(circle_center, circle_radius - 1, circle_radius - 1)
 
+        text = _index.data(Qt.ItemDataRole.DisplayRole)
+        painter.setPen(Qt.black)
+        painter.drawText(option.rect, Qt.AlignmentFlag.AlignCenter, text)
+
         painter.restore()
 
 
@@ -71,6 +75,6 @@ class MRMicroplateTableWidget(QTableWidget):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 # set item not editable
-                item.setFlags(item.flags() & (~Qt.ItemFlag.ItemIsEditable))
+                # item.setFlags(item.flags() & (~Qt.ItemFlag.ItemIsEditable))
 
                 self.setItem(row, column, item)

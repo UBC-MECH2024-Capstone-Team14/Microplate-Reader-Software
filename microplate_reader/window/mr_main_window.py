@@ -89,6 +89,8 @@ class MRMainWindow(QMainWindow):
                     int(word) for word in reply.split(" ")[1:4]
                 ]
                 self.__central_widget.update_cell(row_index, col_index, str(intensity))
+            elif reply.startswith("@home"):
+                self.__central_widget.homed()
 
     def __slot_comport_send(self, data: str):
         data = "/" + data + "\n"
@@ -97,6 +99,7 @@ class MRMainWindow(QMainWindow):
             logger.error("Comport not connected")
             return
         self.__serial_port.write(data.encode("ascii"))
+        self.__serial_port.flush()
 
 
 class MR_main_window_central_widget(QWidget):
@@ -171,7 +174,7 @@ class MR_main_window_central_widget(QWidget):
         self.layout().addWidget(self.__main__splitter)
 
     # update the display value in the table widget cell
-    def update_cell(self, row: int, column: int, value: str):
+    def update_cell(self, column: int, row: int, value: str):
         self.__table_widget.item(row, column).setText(value)
 
         # update the internal data dict
@@ -196,6 +199,7 @@ class MR_main_window_central_widget(QWidget):
         self.__home_timer.start()
 
     def homed(self):
+        self.__home_timer.stop()
         self.__home_button.setEnabled(True)
 
     def __slot_homed_timeout(self):

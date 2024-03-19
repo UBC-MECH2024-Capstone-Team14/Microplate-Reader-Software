@@ -12,5 +12,5 @@ row_positions = [
     576000,
     633600,
 ]
-led_intensities = [8, 8, 8, 8, 8, 8, 8, 8]
+led_intensities = [255, 255, 255, 255, 255, 255, 255, 255]
 open_position = 512000
