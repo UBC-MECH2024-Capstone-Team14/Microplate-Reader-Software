@@ -1,5 +1,7 @@
 import sys
 from contextlib import redirect_stderr, redirect_stdout
+from os import path
+from pathlib import Path
 
 from loguru import logger
 from PySide6.QtGui import QIcon
@@ -17,10 +19,12 @@ if __name__ == "__main__":
     except FileNotFoundError:
         pass
 
+    if path.exists(Path(__file__).parent / "icon.png"):
+        main_window.setWindowIcon(QIcon("./icon.png"))
+
     with redirect_stdout(main_window), redirect_stderr(main_window):  # type: ignore
         logger.remove()
         logger.add(sys.stdout)
-        main_window.setWindowIcon(QIcon("./icon.png"))
         main_window.setWindowFilePath(__file__)
         main_window.show()
         logger.info(f"Starting {main_window.windowTitle()}...")

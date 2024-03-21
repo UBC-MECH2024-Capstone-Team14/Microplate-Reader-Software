@@ -32,6 +32,7 @@ jobs:
           path: |
             ./*.exe
             ./icon.png
+            ./*.qss
             ./microplate-reader-config.toml
 
   release:
