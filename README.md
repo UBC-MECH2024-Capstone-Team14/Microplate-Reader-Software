@@ -8,15 +8,15 @@ Or, `pip install` the packages listed in `pyproject.toml`.
 
 ### Dependencies
 
-"""
+```
 poetry install
-"""
+```
 
 ## Run
 
-"""
+```
 poetry run python ./microplate-reader.py
-"""
+```
 
 Or, for Windows, download the compiled `.exe` from the release page. The following files need to be placed in the same directory as the `.exe`:
 
