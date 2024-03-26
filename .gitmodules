@@ -1,0 +1,3 @@
+[submodule "Microplate-Reader-Protocol"]
+	path = Microplate-Reader-Protocol
+	url = https://github.com/UBC-MECH2024-Capstone-Team14/Microplate-Reader-Protocol.git
