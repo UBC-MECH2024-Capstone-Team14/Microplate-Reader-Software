@@ -208,7 +208,9 @@ class MR_main_window_central_widget(QWidget):
 
     def __slot_read_button_clicked(self):
         self.__write_settings()
-        for item in self.__table_widget.selectedIndexes():
+        for item in sorted(
+            self.__table_widget.selectedIndexes(), key=lambda x: x.column()
+        ):
             self.signal_serial_send.emit(f"scan_well {item.column()} {item.row()}")
 
     def __slot_read_all_button_clicked(self):
