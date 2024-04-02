@@ -15,5 +15,4 @@ row_positions = [
 ]
 led_intensities = [255, 255, 255, 255, 255, 255, 255, 255]
 
-# open_position = 1635000
-open_position = 1500000
+open_position = 1620000
