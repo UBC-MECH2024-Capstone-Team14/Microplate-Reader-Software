@@ -91,6 +91,8 @@ class MRMainWindow(QMainWindow):
                 self.__central_widget.update_cell(row_index, col_index, str(intensity))
             elif reply.startswith("@home"):
                 self.__central_widget.homed()
+            elif reply.startswith(f"@move_abs {self.__central_widget.open_position}"):
+                self.__central_widget.ejected()
 
     def __slot_comport_send(self, data: str):
         data = "/" + data + "\n"
@@ -121,7 +123,7 @@ class MR_main_window_central_widget(QWidget):
         }
 
         # Control Buttons
-        self.__home_button = QPushButton("Home")
+        self.__home_button = QPushButton("Retract Tray")
         self.__home_button.clicked.connect(self.__slot_home_button_clicked)
         self.__eject_button = QPushButton("Eject Tray")
         self.__eject_button.clicked.connect(self.__slot_eject_button_clicked)
@@ -144,6 +146,10 @@ class MR_main_window_central_widget(QWidget):
         self.__move_abs_spinbox.setValue(0)
         self.__move_abs_button = QPushButton("Move Absolute")
         self.__move_abs_button.clicked.connect(self.__slot_move_abs_button_clicked)
+
+        # hide debug utilities
+        self.__move_abs_spinbox.hide()
+        self.__move_abs_button.hide()
 
         # Top Layout
         self.__top_layout = QHBoxLayout()
@@ -172,6 +178,10 @@ class MR_main_window_central_widget(QWidget):
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.__top_layout)  # type: ignore
         self.layout().addWidget(self.__main__splitter)
+
+    @property
+    def open_position(self):
+        return self.__open_position
 
     # update the display value in the table widget cell
     def update_cell(self, column: int, row: int, value: str):
@@ -206,6 +216,23 @@ class MR_main_window_central_widget(QWidget):
         logger.error("Device home timeout")
         self.__home_button.setEnabled(True)
 
+    def __slot_eject_button_clicked(self):
+        self.signal_serial_send.emit(f"move_abs {self.__open_position}")
+        self.__eject_button.setDisabled(True)
+        self.__eject_timer = QTimer()
+        self.__eject_timer.setSingleShot(True)
+        self.__eject_timer.setInterval(15000)
+        self.__eject_timer.timeout.connect(self.__slot_ejected_timeout)
+        self.__eject_timer.start()
+
+    def ejected(self):
+        self.__eject_timer.stop()
+        self.__eject_button.setEnabled(True)
+
+    def __slot_ejected_timeout(self):
+        logger.error("Device eject timeout")
+        self.__eject_button.setEnabled(True)
+
     def __slot_read_button_clicked(self):
         self.__write_settings()
         for item in sorted(
@@ -219,9 +246,6 @@ class MR_main_window_central_widget(QWidget):
 
     def __slot_move_abs_button_clicked(self):
         self.signal_serial_send.emit(f"move_abs {self.__move_abs_spinbox.value()}")
-
-    def __slot_eject_button_clicked(self):
-        self.signal_serial_send.emit(f"move_abs {self.__open_position}")
 
     def __slot_clear_data_button_clicked(self):
         self.__data_dict = {
