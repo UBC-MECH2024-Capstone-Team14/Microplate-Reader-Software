@@ -1,5 +1,7 @@
 # Microplate-Reader-Software
 
+This is the software subsystem of the [Microplate-Reader](https://github.com/UBC-MECH2024-Capstone-Team14/Microplate-Reader) project.
+
 ## Develop Environment
 
 This project uses [poetry](https://python-poetry.org/) as the package manager. Please follow poetry [instructions](https://python-poetry.org/docs/#installation) to install poetry.
