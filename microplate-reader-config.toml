@@ -13,6 +13,8 @@ row_positions = [
     643000,
     700600,
 ]
+
+# LED intensity PWM duty cycle, 0-255
 led_intensities = [255, 255, 255, 255, 255, 255, 255, 255]
 
 open_position = 1620000
